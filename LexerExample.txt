@@ -1,0 +1,16 @@
+//a first program
+//with 2 comments
+int main( ) {
+	int i;
+	float f;
+	i = getInt();
+	f = getInt();
+	put(i);
+	if(i < 5){
+		i = i+10;
+	}
+	while(f < 10.0){
+		f = f+1.0;
+	}
+}//main
+
