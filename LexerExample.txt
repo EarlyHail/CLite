@@ -1,16 +1,15 @@
-//a first program
-//with 2 comments
-int main( ) {
-	int i;
-	float f;
-	i = getInt();
-	f = getInt();
-	put(i);
-	if(i < 5){
-		i = i+10;
-	}
-	while(f < 10.0){
-		f = f+1.0;
-	}
-}//main
-
+int h, i;
+void B(int w) {
+       int j, k;
+       i = 2*w;
+       w = w+1;
+} 
+void A(int x, int y) {
+       bool i, j;
+       B(h);
+}
+int main() {
+       int a, b;
+       h = 5; a = 3; b = 2;
+       A(a, b);
+}

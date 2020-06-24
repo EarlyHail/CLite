@@ -5,22 +5,37 @@ import java.util.*;
 
 public class TypeTransformer {
 
-	public static Program T(Program p, TypeMap tm) { // Transform된 Program return
-		Block body = (Block) T(p.body, tm);
-		return new Program(p.decpart, body);
+	public static Program T(Program p) { // Transform된 Program return
+
+//		Block body = (Block) T(p.body, tm);
+		Functions funcs = p.functions;
+		ArrayList<TypeMap> transedMap = new ArrayList<>();
+		int i = 0;
+		for (Function func : p.functions) {
+			TypeMap tmg = StaticTypeCheck.typing(p.globals, p.functions);
+			TypeMap tmf = StaticTypeCheck.typing(func.params).onion(StaticTypeCheck.typing(func.locals));
+			tmf = tmg.onion(tmf);
+
+			Block transedBody = (Block) T(func.body, tmf, funcs);
+			funcs.set(i, new Function(func.type, func.id, func.params, func.locals, transedBody));
+
+			i++;
+		}
+
+		return new Program(p.globals, funcs);
 	}
 
-	public static Expression T(Expression e, TypeMap tm) {
+	public static Expression T(Expression e, TypeMap tm, Functions funcs) {
 		if (e instanceof Value)
 			return e;
 		if (e instanceof Variable)
 			return e;
 		if (e instanceof Binary) { // 이항식이면
 			Binary b = (Binary) e;
-			Type typ1 = StaticTypeCheck.typeOf(b.term1, tm);
-			Type typ2 = StaticTypeCheck.typeOf(b.term2, tm);
-			Expression t1 = T(b.term1, tm);
-			Expression t2 = T(b.term2, tm);
+			Type typ1 = StaticTypeCheck.typeOf(b.term1, tm, funcs);
+			Type typ2 = StaticTypeCheck.typeOf(b.term2, tm, funcs);
+			Expression t1 = T(b.term1, tm, funcs);
+			Expression t2 = T(b.term2, tm, funcs);
 			if (typ1 == Type.INT)
 				return new Binary(b.op.intMap(b.op.val), t1, t2); // t1 - t2일 때, -를 int-로
 			// 현재 op.val을 가지고 intMap을 찾아서
@@ -36,8 +51,8 @@ public class TypeTransformer {
 		// student exercise
 		if (e instanceof Unary) {
 			Unary u = (Unary) e;
-			Type type = StaticTypeCheck.typeOf(u.term, tm);
-			Expression t = T(u.term, tm);
+			Type type = StaticTypeCheck.typeOf(u.term, tm, funcs);
+			Expression t = T(u.term, tm, funcs);
 			if (type == Type.INT) // op가 negateOp인지 확인 해야하나.....????
 				return new Unary(u.op.intMap(u.op.val), t);
 			if (type == Type.FLOAT)
@@ -51,19 +66,22 @@ public class TypeTransformer {
 		if (e instanceof GetFloat) {
 			return e;
 		}
-		//TODO
+		if (e instanceof Call) {
+			return e;
+		}
+		// TODO
 		throw new IllegalArgumentException("should never reach here");
 	}
 
-	public static Statement T(Statement s, TypeMap tm) {
+	public static Statement T(Statement s, TypeMap tm, Functions funcs) {
 		if (s instanceof Skip)
 			return s;
 		if (s instanceof Assignment) {
 			Assignment a = (Assignment) s;
 			Variable target = a.target;
-			Expression src = T(a.source, tm);
+			Expression src = T(a.source, tm, funcs);
 			Type ttype = (Type) tm.get(a.target);
-			Type srctype = StaticTypeCheck.typeOf(a.source, tm);
+			Type srctype = StaticTypeCheck.typeOf(a.source, tm, funcs);
 			if (ttype == Type.FLOAT) {
 				if (srctype == Type.INT) {
 					src = new Unary(new Operator(Operator.I2F), src);
@@ -80,28 +98,43 @@ public class TypeTransformer {
 		}
 		if (s instanceof Conditional) {
 			Conditional c = (Conditional) s;
-			Expression test = T(c.test, tm);
-			Statement tbr = T(c.thenbranch, tm);
-			Statement ebr = T(c.elsebranch, tm);
+			Expression test = T(c.test, tm, funcs);
+			Statement tbr = T(c.thenbranch, tm, funcs);
+			Statement ebr = T(c.elsebranch, tm, funcs);
 			return new Conditional(test, tbr, ebr);
 		}
 		if (s instanceof Loop) {
 			Loop l = (Loop) s;
-			Expression test = T(l.test, tm);
-			Statement body = T(l.body, tm);
+			Expression test = T(l.test, tm, funcs);
+			Statement body = T(l.body, tm, funcs);
 			return new Loop(test, body);
 		}
 		if (s instanceof Block) {
 			Block b = (Block) s;
 			Block out = new Block();
 			for (Statement stmt : b.members)
-				out.members.add(T(stmt, tm));
+				out.members.add(T(stmt, tm, funcs));
 			return out;
 		}
 		if (s instanceof Put) {
 			Put p = (Put) s;
-			Expression term = T(p.term, tm);
+			Expression term = T(p.term, tm, funcs);
 			return new Put(term);
+		}
+		if (s instanceof Call) {
+			Call c = (Call) s;
+			ArrayList<Expression> transedArgs = new ArrayList<>();
+			if (c.args != null) {
+				for (Expression e : c.args) {
+					transedArgs.add(T(e, tm, funcs));
+				}
+			}
+			return new Call(c.name, transedArgs);
+		}
+		if (s instanceof Return) {
+			Return r = (Return) s;
+			Expression result = T(r.result, tm, funcs);
+			return new Return(r.target, result);
 		}
 		throw new IllegalArgumentException("should never reach here");
 	}
@@ -112,11 +145,11 @@ public class TypeTransformer {
 		prog.display(); // student exercise
 		System.out.println("\nBegin type checking...");
 		System.out.print("Type map: ");
-		TypeMap map = StaticTypeCheck.typing(prog.decpart);
-		map.display(); // student exercise
+		TypeMap map = StaticTypeCheck.typing(prog.globals, prog.functions);
+		map.display();
 		StaticTypeCheck.V(prog);
-		Program out = T(prog, map);
+		Program out = T(prog);
 		System.out.println("Output AST");
-        out.display();    // student exercise
+		out.display(); // student exercise
 	} // main
 } // class TypeTransformer

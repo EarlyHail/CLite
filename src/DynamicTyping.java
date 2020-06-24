@@ -6,7 +6,7 @@
 public class DynamicTyping extends Semantics {
     
     State M (Program p) { 
-        return M (p.body, new State( )); 
+        return M (p.globals, new State( )); 
     }
   
     Value applyBinary (Operator op, Value v1, Value v2) {

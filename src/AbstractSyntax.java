@@ -4,19 +4,59 @@
 import java.util.*;
 
 class Program {
-	// Program = Declarations decpart ; Block body
-	Declarations decpart;
-	Block body;
+	// Program = Declarations globals; Functions functions
+	// Old Program = Declarations decpart ; Block body
+	Declarations globals;
+	Functions functions;
 
-	Program(Declarations d, Block b) {
-		decpart = d;
-		body = b;
+	Program(Declarations g, Functions f) {
+		globals = g;
+		functions = f;
 	}
 
 	public void display() {
 		System.out.println("Program ");
-		decpart.display(1);
-		body.display(1);
+		globals.display(1);
+		functions.display(1);
+	}
+}
+
+class Functions extends ArrayList<Function> {
+	// TODO
+	public void display(int tap) {
+		for (int i = 0; i < tap; i++)
+			System.out.print("\t");
+		System.out.println("Functions");
+		for (int i = 0; i < size(); i++)
+			get(i).display(tap + 1);
+
+	}
+}
+
+class Function {
+	// Function = Type t; String id; Declarations params, locals; Block body
+	Type type;
+	String id;
+	Declarations params;
+	Declarations locals;
+	Block body;
+
+	Function(Type t, String id, Declarations params, Declarations locals, Block body) {
+		this.type = t;
+		this.id = id;
+		this.locals = locals;
+		this.params = params;
+		this.body = body;
+	}
+
+	// TODO
+	public void display(int tap) {
+		for (int i = 0; i < tap; i++)
+			System.out.print("\t");
+		System.out.println(type.toString() + " " + id);
+		params.display(tap + 1);
+		locals.display(tap + 1);
+		body.display(tap + 1);
 	}
 }
 
@@ -30,6 +70,13 @@ class Declarations extends ArrayList<Declaration> {
 	}
 	// Declarations = Declaration*
 	// (a list of declarations d1, d2, ..., dn)
+
+	public void toString2() {
+		for (int i = 0; i < size(); i++) {
+			get(i).display2();
+			System.out.print(" ");
+		}
+	}
 }
 
 class Declaration {
@@ -42,26 +89,34 @@ class Declaration {
 		t = type;
 	} // declaration */
 
+	public void display2() {
+		t.display2();
+		System.out.print("=");
+		v.display2();
+	}
+
 	public void display(int tap) {
 		for (int i = 0; i < tap; i++)
 			System.out.print("\t");
-		System.out.print("Type: ");
-		t.display(0);
-		System.out.print('\t');
 		v.display(0);
 	}
 }
 
-class Type {
-	// Type = int | bool | char | float
+class Type extends ProtoType{
+	// Type = int | bool | char | float | void
 	final static Type INT = new Type("int");
 	final static Type BOOL = new Type("bool");
 	final static Type CHAR = new Type("char");
 	final static Type FLOAT = new Type("float");
+	final static Type VOID = new Type("void");
 	// final static Type UNDEFINED = new Type("undef");
+	final static Type UNUSED = new Type("unu");
 
 	private String id;
-
+	public Type() {}
+	public void display2() {
+		System.out.print(id);
+	}
 	private Type(String t) {
 		id = t;
 	}
@@ -71,21 +126,24 @@ class Type {
 	}
 
 	public void display(int tap) {
+		for (int i = 0; i < tap; i++)
+			System.out.print('\t');
 		System.out.print(id);
 	}
 }
 
-abstract class Statement {
+abstract interface Statement {
 	// Statement = Skip | Block | Assignment | Conditional | Loop
+	// | Put | Call | Return
 	public abstract void display(int tap);
 }
 
-class Skip extends Statement {
+class Skip implements Statement {
 	public void display(int tap) {
 	}
 }
 
-class Block extends Statement {
+class Block implements Statement {
 	// Block = Statement*
 	// (a Vector of members)
 	public ArrayList<Statement> members = new ArrayList<Statement>();
@@ -100,7 +158,7 @@ class Block extends Statement {
 	}
 }
 
-class Assignment extends Statement {
+class Assignment implements Statement {
 	// Assignment = Variable target; Expression source
 	Variable target;
 	Expression source;
@@ -119,7 +177,7 @@ class Assignment extends Statement {
 	}
 }
 
-class Conditional extends Statement {
+class Conditional implements Statement {
 // Conditional = Expression test; Statement thenbranch, elsebranch
 	Expression test;
 	Statement thenbranch, elsebranch;
@@ -147,7 +205,7 @@ class Conditional extends Statement {
 	}
 }
 
-class Loop extends Statement {
+class Loop implements Statement {
 // Loop = Expression test; Statement body
 	Expression test;
 	Statement body;
@@ -166,7 +224,7 @@ class Loop extends Statement {
 	}
 }
 
-class Put extends Statement {
+class Put implements Statement {
 	Expression term;
 
 	Put(Expression term) {
@@ -181,12 +239,53 @@ class Put extends Statement {
 	}
 }
 
-abstract class Expression {
-	public abstract void display(int tap);
-	// Expression = Variable | Value | Binary | Unary | GetInt | GetFloat
+class Call implements Statement, Expression {
+	String name;
+	ArrayList<Expression> args;	
+
+	Call(String n, ArrayList<Expression> a) {
+		name = n;
+		args = a;
+	}
+
+	public void display(int tap) {
+		for (int i = 0; i < tap; i++)
+			System.out.print('\t');
+		System.out.println("Call\t" + name);
+		if (args != null) {
+			for (int i = 0; i < tap+1; i++)
+				System.out.print('\t');
+			System.out.println("Args");
+			for (int i = 0; i < args.size(); i++) {
+				args.get(i).display(tap + 2);
+			}
+		}
+	}
 }
 
-class GetInt extends Expression {
+class Return implements Statement {
+	Variable target;	//function name
+	Expression result;	//return value
+
+	Return(Variable t, Expression r) {
+		target = t;
+		result = r;
+	}
+
+	public void display(int tap) {
+		for (int i = 0; i < tap; i++)
+			System.out.print('\t');
+		System.out.println("Return ");
+		result.display(tap + 1);
+	}
+}
+
+interface Expression {
+	public abstract void display(int tap);
+	// Expression = Variable | Value | Binary | Unary | GetInt | GetFloat | Call
+}
+
+class GetInt implements Expression {
 	IntValue intvalue;
 
 	GetInt() {
@@ -202,7 +301,7 @@ class GetInt extends Expression {
 	}
 }
 
-class GetFloat extends Expression {
+class GetFloat implements Expression {
 	FloatValue floatvalue;
 
 	GetFloat() {
@@ -218,12 +317,16 @@ class GetFloat extends Expression {
 	}
 }
 
-class Variable extends Expression {
+class Variable implements Expression {
 	// Variable = String id
 	private String id;
 
 	Variable(String s) {
 		id = s;
+	}
+
+	public void display2() {
+		System.out.print(id);
 	}
 
 	public String toString() {
@@ -243,12 +346,11 @@ class Variable extends Expression {
 	public void display(int tap) {
 		for (int i = 0; i < tap; i++)
 			System.out.print("\t");
-		System.out.print("Variable\t");
 		System.out.println(id);
 	}
 }
 
-abstract class Value extends Expression {
+abstract class Value implements Expression {
 	// Value = IntValue | BoolValue |
 	// CharValue | FloatValue
 	protected Type type;
@@ -290,6 +392,8 @@ abstract class Value extends Expression {
 		if (type == Type.CHAR)
 			return new CharValue();
 		if (type == Type.FLOAT)
+			return new FloatValue();
+		if (type == Type.UNUSED)
 			return new FloatValue();
 		throw new IllegalArgumentException("Illegal type in mkValue");
 	}
@@ -429,7 +533,7 @@ class FloatValue extends Value {
 	}
 }
 
-class Binary extends Expression {
+class Binary implements Expression {
 // Binary = Operator op; Expression term1, term2
 	Operator op;
 	Expression term1, term2;
@@ -451,7 +555,7 @@ class Binary extends Expression {
 	}
 }
 
-class Unary extends Expression {
+class Unary implements Expression {
 	// Unary = Operator op; Expression term
 	Operator op;
 	Expression term;
@@ -550,7 +654,6 @@ class Operator {
 	Operator(String s) {
 		val = s;
 	}
-
 	public String toString() {
 		return val;
 	}
